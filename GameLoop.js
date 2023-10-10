@@ -9,12 +9,10 @@ const _Metrics = {
 const Map = {};
 const Tasks = [];
 
-process.on("message", (data) => {
-    console.log(data);
-    if (data.type === "task" ) {
-        Tasks.push(data);
-    }
-});
+function EventHandler(event) {
+    console.log("GameLoop", event);
+};
+process.on("message", EventHandler);
 
 function Tick() {
     let now = Date.now();
