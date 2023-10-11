@@ -1,36 +1,30 @@
 "use strict";
-const cluster = require('cluster');
-const { randomUUID } = require('crypto');
+const cluster = require("cluster");
+const { randomUUID } = require("crypto");
 if (cluster.isMaster) {
-    const { readFileSync } = require('fs');
+    const { readFileSync } = require("fs");
     const { createServer } = require("https");
     const { Server } = require("socket.io");
-    const EventEmitter = require('events');
+    const EventEmitter = require("events");
     const { serialize } = require("cookie");
 
     const httpsServer = createServer({
-        key: readFileSync('../../CERT/localhost-decrypted.key'),
-        cert: readFileSync('../../CERT/localhost.crt')
+        key: readFileSync("../../CERT/localhost-decrypted.key"),
+        cert: readFileSync("../../CERT/localhost.crt")
     });
 
     const io = new Server(httpsServer, {
         path: "/Grantoria/",
         serveClient: false,
         transports: ["websocket"],
-        allowRequest: async function(req, callback) {
-            console.log("Session start.")
-            req.socket.on('close', () => {
+        allowRequest: async function(req, cb) {
+            console.log(req.socket.address())
+            req.socket.on("close", ()=>{
                 console.log("Session closed.");
             });
-            let session = await SessionHandler(req);
-            req.session = session;
-            console.log("Passing session", session)
-            callback(null, true);
+            cb(null, true);
         }
     });
-    setInterval( () => {
-        io.emit( "tick", "debug" );
-    }, 1000 )
 
     var GameLoop = (function(){
         function GameLoopWorker() {
@@ -66,19 +60,11 @@ if (cluster.isMaster) {
     const Sessions = {};
     function SessionEventHandler(event) {
         switch (event.type) {
-            case "SessionLoaded": console.log( "Session:",event ) ; break;
+            case "SessionLoaded": console.log("Session:", event); break;
             default: console.error("Unknown event type");
         }
     };
     
-    async function SessionHandler(req) {
-        req.sessionId = "Sesja123";
-        Sessions[req.sessionId] = new EventEmitter();
-        return new Promise((resolve, reject) => {
-            Sessions[req.sessionId].on("Load", resolve);
-            Sessions[req.sessionId].on("Fail", reject);
-        })
-    }
     io.engine.on("initial_headers", (headers, req) => {
         if (req.session)
             headers["set-cookie"] = serialize("sid", req.session.id, { sameSite: "strict" });
@@ -87,7 +73,7 @@ if (cluster.isMaster) {
         
     });
 
-    httpsServer.listen(443, () => {
+    httpsServer.listen(443, "localhost", () => {
         console.log("Grantoria listening on port 443");
     });
 } else require(process.env.role);
